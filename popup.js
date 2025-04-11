@@ -1,15 +1,14 @@
 // popup.js
 
-// Escuta a mensagem vinda do content.js
-chrome.runtime.onMessage.addListener((request) => {
-  if (request.comentario) {
-    document.getElementById('comentario').textContent = request.comentario;
-  }
+// Quando o popup carregar, busca o comentário salvo
+chrome.storage.local.get("comentario", (data) => {
+  const comentario = data.comentario || "Nenhum comentário encontrado.";
+  document.getElementById("comentario").textContent = comentario;
 });
 
 // Botão copiar
-document.getElementById('copiar').addEventListener('click', () => {
-  const texto = document.getElementById('comentario').textContent;
+document.getElementById("copiar").addEventListener("click", () => {
+  const texto = document.getElementById("comentario").textContent;
   navigator.clipboard.writeText(texto).then(() => {
     alert("Comentário copiado!");
   });

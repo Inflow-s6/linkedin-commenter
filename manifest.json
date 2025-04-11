@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "LinkedIn AI Commenter",
+  "version": "1.0",
+  "description": "Gera comentários inteligentes para publicações no LinkedIn com ajuda de IA.",
+  "permissions": ["scripting", "activeTab"],
+  "host_permissions": ["https://www.linkedin.com/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://www.linkedin.com/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "icons": {
+    "128": "icons/icon128.png"
+  }
+}

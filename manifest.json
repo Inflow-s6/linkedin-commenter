@@ -3,8 +3,14 @@
   "name": "LinkedIn AI Commenter",
   "version": "1.0",
   "description": "Gera comentários inteligentes para publicações no LinkedIn com ajuda de IA.",
-  "permissions": ["scripting", "activeTab"],
-  "host_permissions": ["https://www.linkedin.com/*"],
+  "permissions": [
+    "scripting",
+    "activeTab",
+    "storage"             ← AQUI!
+  ],
+  "host_permissions": [
+    "https://www.linkedin.com/*"
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

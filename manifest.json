@@ -6,7 +6,7 @@
   "permissions": [
     "scripting",
     "activeTab",
-    "storage"             ← AQUI!
+    "storage"
   ],
   "host_permissions": [
     "https://www.linkedin.com/*"

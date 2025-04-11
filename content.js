@@ -8,7 +8,7 @@ function adicionarBotao(post) {
   btn.style.color = '#fff';
   btn.style.border = 'none';
   btn.style.borderRadius = '4px';
-  
+
   btn.onclick = () => {
     const texto = post.innerText;
     fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook-test/comentario-linkedin', {
@@ -20,7 +20,15 @@ function adicionarBotao(post) {
     })
     .then(res => res.json())
     .then(data => {
+      // Mostra alerta
       alert('Comentário sugerido:\n\n' + data.comentario);
+
+      // Salva o comentário localmente para o popup pegar depois
+      chrome.storage.local.set({ comentario: data.comentario });
+    })
+    .catch(error => {
+      console.error('Erro ao gerar comentário:', error);
+      alert('Erro ao gerar comentário.');
     });
   };
 

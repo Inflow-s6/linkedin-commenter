@@ -11,7 +11,7 @@ function adicionarBotao(post) {
   
   btn.onclick = () => {
     const texto = post.innerText;
-    fetch('https://SEU_N8N.com/webhook/comentario-linkedin', {
+    fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook-test/comentario-linkedin', {
       method: 'POST',
       body: JSON.stringify({ texto }),
       headers: {

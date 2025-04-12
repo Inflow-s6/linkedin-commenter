@@ -14,7 +14,13 @@ function criarBotaoIA(caixa) {
   btn.style.fontSize = '14px';
   btn.style.display = 'block';
 
-  btn.onclick = async () => {
+  btn.onclick = async (event) => {
+    event.preventDefault(); // Evita qualquer envio automático
+
+    // Evita ações antes do preenchimento
+    btn.disabled = true;
+    btn.textContent = '⏳ Gerando...';
+
     const textoReferencia = encontrarTextoRelacionado(caixa);
 
     const resposta = await fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook-test/comentario-linkedin', {
@@ -27,35 +33,34 @@ function criarBotaoIA(caixa) {
     const comentario = data.comentario;
 
     preencherComentario(caixa, comentario);
+
+    // Restaura o botão
+    btn.disabled = false;
+    btn.textContent = '💬 Gerar comentário IA';
   };
 
   caixa.parentElement.appendChild(btn);
 }
 
 function preencherComentario(caixa, texto) {
-  // Previne envio automático de resposta vazia
-  caixa.innerHTML = ''; // Limpa o campo
-  caixa.blur(); // Remove foco imediatamente
+  // Garante que não dispare envio automático
+  caixa.innerHTML = ''; // limpa o campo
 
-  // Aguarda um pouco e só então preenche e foca
   setTimeout(() => {
-    caixa.focus(); // Foca depois com segurança
-
     texto.split('\n').forEach((linha, i) => {
       if (i > 0) caixa.appendChild(document.createElement('br'));
       caixa.appendChild(document.createTextNode(linha));
     });
 
-    // Dispara o evento para ativar botão "Comentar"/"Responder"
+    // Atualiza o estado do LinkedIn
     caixa.dispatchEvent(new InputEvent("input", { bubbles: true }));
-  }, 100); // Pequeno delay para evitar conflito
+  }, 100);
 }
 
 function encontrarTextoRelacionado(caixa) {
   const isResposta = !!caixa.closest('.comments-comment-item');
 
   if (isResposta) {
-    // Respondendo a um comentário
     const comentarioElement = caixa.closest('.comments-comment-item');
     const spans = comentarioElement?.querySelectorAll('span[dir="ltr"], div[dir="ltr"]');
     let textoComentario = '';
@@ -66,7 +71,6 @@ function encontrarTextoRelacionado(caixa) {
     });
     return textoComentario.trim();
   } else {
-    // Comentando na publicação principal
     const post = caixa.closest('[data-id]');
     const textoPost = post?.innerText || '';
     return textoPost.trim().slice(0, 1000);

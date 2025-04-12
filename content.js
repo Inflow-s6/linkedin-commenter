@@ -19,10 +19,12 @@ function gerarComentarioIA(texto, campoComentario) {
 
 function observarComentarios() {
   const observer = new MutationObserver(() => {
-    const caixasComentario = document.querySelectorAll('div.comments-comment-box__form-container textarea, div.comments-comment-box__editor textarea');
-    
+    // Seletor para caixas de comentários e respostas
+    const caixasComentario = document.querySelectorAll('textarea[aria-label="Adicionar comentário"], textarea[aria-label="Adicionar uma resposta"]');
+
     caixasComentario.forEach(caixa => {
-      if (!caixa.parentElement.querySelector('.botao-comentario-ia')) {
+      const jaTemBotao = caixa.parentElement.querySelector('.botao-comentario-ia');
+      if (!jaTemBotao) {
         const btn = document.createElement('button');
         btn.textContent = '💬 Gerar comentário IA';
         btn.className = 'botao-comentario-ia';
@@ -33,12 +35,15 @@ function observarComentarios() {
         btn.style.color = '#fff';
         btn.style.border = 'none';
         btn.style.borderRadius = '4px';
-        
+
         btn.onclick = () => {
-          const textoReferencia = document.querySelector('[data-id*="urn:li:activity"]')?.innerText || 'Comentário no LinkedIn';
+          // Captura o texto do post ou comentário
+          const postPai = caixa.closest('[data-id]');
+          const textoReferencia = postPai?.innerText || document.body.innerText.slice(0, 1000);
           gerarComentarioIA(textoReferencia, caixa);
         };
-        
+
+        // Adiciona o botão depois da caixa de texto
         caixa.parentElement.appendChild(btn);
       }
     });

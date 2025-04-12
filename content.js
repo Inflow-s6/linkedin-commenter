@@ -14,25 +14,36 @@ function criarBotaoIA(caixa) {
   btn.style.fontSize = '14px';
   btn.style.display = 'block';
 
-  btn.onclick = () => {
+  btn.onclick = async () => {
     const postTexto = encontrarTextoRelacionado(caixa);
-    fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook-test/comentario-linkedin', {
+    const resposta = await fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook-test/comentario-linkedin', {
       method: 'POST',
       body: JSON.stringify({ texto: postTexto }),
       headers: { 'Content-Type': 'application/json' }
-    })
-    .then(res => res.json())
-    .then(data => {
-      chrome.storage.local.set({ comentario: data.comentario });
-      alert("Comentário sugerido:\n\n" + data.comentario);
-    })
-    .catch(err => {
-      console.error("Erro ao gerar comentário IA:", err);
-      alert("Erro ao gerar comentário.");
     });
+
+    const data = await resposta.json();
+    const comentario = data.comentario;
+
+    // Preenche diretamente no campo de texto do comentário
+    preencherComentario(caixa, comentario);
   };
 
   caixa.parentElement.appendChild(btn);
+}
+
+function preencherComentario(caixa, texto) {
+  caixa.focus();
+
+  // Define o conteúdo com quebra de linha respeitada
+  caixa.innerHTML = ''; // limpa qualquer placeholder
+  texto.split('\n').forEach((linha, i) => {
+    if (i > 0) caixa.appendChild(document.createElement('br'));
+    caixa.appendChild(document.createTextNode(linha));
+  });
+
+  // Aciona o evento de input para o botão "Comentar" ou "Responder" ativar
+  caixa.dispatchEvent(new InputEvent("input", { bubbles: true }));
 }
 
 function encontrarTextoRelacionado(caixa) {

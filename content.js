@@ -1,85 +1,54 @@
-function gerarComentario(texto, campoTexto) {
-  fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook-test/comentario-linkedin', {
-    method: 'POST',
-    body: JSON.stringify({ texto }),
-    headers: { 'Content-Type': 'application/json' }
-  })
-    .then(res => res.json())
-    .then(data => {
-      if (campoTexto) {
-        if (campoTexto.tagName === 'TEXTAREA') {
-          campoTexto.value = data.comentario;
-          campoTexto.dispatchEvent(new Event('input', { bubbles: true }));
-        } else {
-          campoTexto.innerText = data.comentario;
-          campoTexto.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-      }
+function adicionarBotao(container, textarea) {
+  const btn = document.createElement('button');
+  btn.textContent = '💬 Gerar comentário IA';
+  btn.style.marginTop = '8px';
+  btn.style.padding = '6px';
+  btn.style.cursor = 'pointer';
+  btn.style.background = '#0073b1';
+  btn.style.color = '#fff';
+  btn.style.border = 'none';
+  btn.style.borderRadius = '4px';
+  btn.setAttribute('data-inserido', 'true');
+
+  btn.onclick = () => {
+    const texto = container.innerText || '';
+    fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook-test/comentario-linkedin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texto })
     })
-    .catch(error => {
-      console.error('Erro ao gerar comentário:', error);
-    });
+      .then(res => res.json())
+      .then(data => {
+        textarea.value = data.comentario || 'Comentário gerado com IA.';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      })
+      .catch(err => {
+        console.error('Erro ao gerar comentário IA:', err);
+        alert('Erro ao gerar comentário.');
+      });
+  };
+
+  textarea.parentNode.appendChild(btn);
 }
 
-function criarBotaoIA(campoTexto, textoOriginal) {
-  if (campoTexto.parentElement.querySelector('[data-gerador]')) return;
-
-  const botao = document.createElement('button');
-  botao.textContent = '💬 Gerar comentário IA';
-  botao.style.marginTop = '10px';
-  botao.style.padding = '6px 12px';
-  botao.style.background = '#0073b1';
-  botao.style.color = '#fff';
-  botao.style.border = 'none';
-  botao.style.borderRadius = '4px';
-  botao.style.cursor = 'pointer';
-  botao.setAttribute('data-gerador', 'true');
-
-  botao.onclick = () => gerarComentario(textoOriginal, campoTexto);
-  campoTexto.parentElement.appendChild(botao);
-}
-
-function observarCamposDinamicos() {
+function observarCamposDeComentario() {
   const observer = new MutationObserver(() => {
-    // Verifica campos de texto visíveis e válidos
-    const campos = Array.from(document.querySelectorAll('[contenteditable="true"], textarea'))
-      .filter(el =>
-        !el.hasAttribute('data-verificado') &&
-        el.offsetParent !== null &&
-        (el.getAttribute('aria-label')?.toLowerCase().includes('comentar') ||
-         el.getAttribute('aria-label')?.toLowerCase().includes('responder') ||
-         el.placeholder?.toLowerCase().includes('comentar') ||
-         el.placeholder?.toLowerCase().includes('responder'))
-      );
+    document.querySelectorAll('form').forEach(form => {
+      const textarea = form.querySelector('textarea');
+      const jaTemBotao = form.querySelector('button[data-inserido]');
 
-    campos.forEach(campo => {
-      campo.setAttribute('data-verificado', 'true');
-
-      let textoOriginal = '';
-
-      // Tenta achar o texto anterior da publicação
-      const blocoPai = campo.closest('[data-id*="urn:li:activity"]');
-      if (blocoPai) {
-        const possivelTexto = blocoPai.querySelector('span, p, div');
-        if (possivelTexto) textoOriginal = possivelTexto.innerText.trim();
-      }
-
-      // Se estiver dentro de comentário
-      const comentarioPai = campo.closest('[class*="comments-comment-item"]');
-      if (comentarioPai) {
-        const comentario = comentarioPai.querySelector('span, div, p');
-        if (comentario) textoOriginal = comentario.innerText.trim();
-      }
-
-      if (textoOriginal && textoOriginal.length > 20) {
-        criarBotaoIA(campo, textoOriginal);
+      if (textarea && !jaTemBotao) {
+        adicionarBotao(form, textarea);
       }
     });
   });
 
-  observer.observe(document.body, { childList: true, subtree: true });
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
 }
 
 window.addEventListener('load', () => {
-  setTimeout(observarCamposDinamicos, 2000);
+  setTimeout(observarCamposDeComentario, 2000);
 });

@@ -1,10 +1,4 @@
-// content.js
-
-function gerarComentarioIA(texto, callback) {
-  const botaoOriginal = document.querySelector('.gerar-comentario-ia');
-
-  if (botaoOriginal) botaoOriginal.textContent = 'Gerando...';
-
+function gerarComentarioIA(texto, campoComentario) {
   fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook-test/comentario-linkedin', {
     method: 'POST',
     body: JSON.stringify({ texto }),
@@ -12,59 +6,41 @@ function gerarComentarioIA(texto, callback) {
       'Content-Type': 'application/json'
     }
   })
-    .then(res => res.json())
-    .then(data => {
-      if (botaoOriginal) botaoOriginal.textContent = 'Comentário pronto!';
-      chrome.storage.local.set({ comentario: data.comentario });
-      callback(data.comentario);
-    })
-    .catch(err => {
-      console.error('Erro ao gerar comentário:', err);
-      if (botaoOriginal) botaoOriginal.textContent = 'Erro ao gerar';
-    });
-}
-
-function adicionarBotao(container, textarea, textoExtraido) {
-  if (container.querySelector('.gerar-comentario-ia')) return;
-
-  const btn = document.createElement('button');
-  btn.textContent = '💬 Gerar comentário IA';
-  btn.className = 'gerar-comentario-ia';
-  btn.style.margin = '10px 0';
-  btn.style.padding = '6px';
-  btn.style.cursor = 'pointer';
-  btn.style.background = '#0073b1';
-  btn.style.color = '#fff';
-  btn.style.border = 'none';
-  btn.style.borderRadius = '4px';
-
-  btn.onclick = () => {
-    gerarComentarioIA(textoExtraido, (comentarioGerado) => {
-      textarea.value = comentarioGerado;
-      textarea.focus();
-    });
-  };
-
-  container.appendChild(btn);
+  .then(res => res.json())
+  .then(data => {
+    campoComentario.value = data.comentario;
+    campoComentario.dispatchEvent(new Event('input', { bubbles: true }));
+  })
+  .catch(error => {
+    console.error('Erro ao gerar comentário:', error);
+    alert('Erro ao gerar comentário.');
+  });
 }
 
 function observarComentarios() {
   const observer = new MutationObserver(() => {
-    const caixasComentario = document.querySelectorAll('div.comments-comment-box__form, div.comments-comment-box__reply-form');
-
+    const caixasComentario = document.querySelectorAll('div.comments-comment-box__form-container textarea, div.comments-comment-box__editor textarea');
+    
     caixasComentario.forEach(caixa => {
-      const textarea = caixa.querySelector('textarea');
-      if (!textarea) return;
-
-      // Encontra o texto da publicação ou comentário associado
-      let textoPost = '';
-      const containerPost = caixa.closest('[data-id]');
-      if (containerPost) {
-        const elementoTexto = containerPost.querySelector('[dir="ltr"]');
-        if (elementoTexto) textoPost = elementoTexto.innerText;
+      if (!caixa.parentElement.querySelector('.botao-comentario-ia')) {
+        const btn = document.createElement('button');
+        btn.textContent = '💬 Gerar comentário IA';
+        btn.className = 'botao-comentario-ia';
+        btn.style.marginTop = '8px';
+        btn.style.padding = '6px 10px';
+        btn.style.cursor = 'pointer';
+        btn.style.background = '#0073b1';
+        btn.style.color = '#fff';
+        btn.style.border = 'none';
+        btn.style.borderRadius = '4px';
+        
+        btn.onclick = () => {
+          const textoReferencia = document.querySelector('[data-id*="urn:li:activity"]')?.innerText || 'Comentário no LinkedIn';
+          gerarComentarioIA(textoReferencia, caixa);
+        };
+        
+        caixa.parentElement.appendChild(btn);
       }
-
-      adicionarBotao(caixa, textarea, textoPost);
     });
   });
 
@@ -72,5 +48,5 @@ function observarComentarios() {
 }
 
 window.addEventListener('load', () => {
-  setTimeout(observarComentarios, 2000);
+  setTimeout(observarComentarios, 3000);
 });

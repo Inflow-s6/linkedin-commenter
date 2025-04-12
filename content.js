@@ -33,22 +33,29 @@ function criarBotaoIA(caixa) {
 }
 
 function preencherComentario(caixa, texto) {
-  caixa.focus();
-  caixa.innerHTML = '';
+  // Previne envio automático de resposta vazia
+  caixa.innerHTML = ''; // Limpa o campo
+  caixa.blur(); // Remove foco imediatamente
 
-  texto.split('\n').forEach((linha, i) => {
-    if (i > 0) caixa.appendChild(document.createElement('br'));
-    caixa.appendChild(document.createTextNode(linha));
-  });
+  // Aguarda um pouco e só então preenche e foca
+  setTimeout(() => {
+    caixa.focus(); // Foca depois com segurança
 
-  caixa.dispatchEvent(new InputEvent("input", { bubbles: true }));
+    texto.split('\n').forEach((linha, i) => {
+      if (i > 0) caixa.appendChild(document.createElement('br'));
+      caixa.appendChild(document.createTextNode(linha));
+    });
+
+    // Dispara o evento para ativar botão "Comentar"/"Responder"
+    caixa.dispatchEvent(new InputEvent("input", { bubbles: true }));
+  }, 100); // Pequeno delay para evitar conflito
 }
 
 function encontrarTextoRelacionado(caixa) {
   const isResposta = !!caixa.closest('.comments-comment-item');
 
   if (isResposta) {
-    // Estamos respondendo a um comentário
+    // Respondendo a um comentário
     const comentarioElement = caixa.closest('.comments-comment-item');
     const spans = comentarioElement?.querySelectorAll('span[dir="ltr"], div[dir="ltr"]');
     let textoComentario = '';

@@ -7,8 +7,13 @@ function gerarComentario(texto, campoTexto) {
     .then(res => res.json())
     .then(data => {
       if (campoTexto) {
-        campoTexto.value = data.comentario;
-        campoTexto.dispatchEvent(new Event('input', { bubbles: true }));
+        if (campoTexto.tagName === 'TEXTAREA') {
+          campoTexto.value = data.comentario;
+          campoTexto.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+          campoTexto.innerText = data.comentario;
+          campoTexto.dispatchEvent(new Event('input', { bubbles: true }));
+        }
       }
     })
     .catch(error => {
@@ -36,35 +41,38 @@ function criarBotaoIA(campoTexto, textoOriginal) {
 
 function observarCamposDinamicos() {
   const observer = new MutationObserver(() => {
-    const textareas = Array.from(document.querySelectorAll('textarea'))
-      .filter(el => !el.hasAttribute('data-verificado') &&
-                    (el.placeholder?.toLowerCase().includes('comentar') ||
-                     el.placeholder?.toLowerCase().includes('responder')));
+    // Verifica campos de texto visíveis e válidos
+    const campos = Array.from(document.querySelectorAll('[contenteditable="true"], textarea'))
+      .filter(el =>
+        !el.hasAttribute('data-verificado') &&
+        el.offsetParent !== null &&
+        (el.getAttribute('aria-label')?.toLowerCase().includes('comentar') ||
+         el.getAttribute('aria-label')?.toLowerCase().includes('responder') ||
+         el.placeholder?.toLowerCase().includes('comentar') ||
+         el.placeholder?.toLowerCase().includes('responder'))
+      );
 
-    textareas.forEach(textarea => {
-      textarea.setAttribute('data-verificado', 'true');
+    campos.forEach(campo => {
+      campo.setAttribute('data-verificado', 'true');
 
       let textoOriginal = '';
 
-      // Se for resposta de comentário
-      const comentarioPai = textarea.closest('[class*="comments-comment-item"]');
+      // Tenta achar o texto anterior da publicação
+      const blocoPai = campo.closest('[data-id*="urn:li:activity"]');
+      if (blocoPai) {
+        const possivelTexto = blocoPai.querySelector('span, p, div');
+        if (possivelTexto) textoOriginal = possivelTexto.innerText.trim();
+      }
+
+      // Se estiver dentro de comentário
+      const comentarioPai = campo.closest('[class*="comments-comment-item"]');
       if (comentarioPai) {
         const comentario = comentarioPai.querySelector('span, div, p');
-        if (comentario) {
-          textoOriginal = comentario.innerText.trim();
-        }
+        if (comentario) textoOriginal = comentario.innerText.trim();
       }
 
-      // Se for comentário à publicação
-      if (!textoOriginal) {
-        const postContainer = textarea.closest('[data-id*="urn:li:activity"]');
-        if (postContainer) {
-          textoOriginal = postContainer.innerText.trim();
-        }
-      }
-
-      if (textoOriginal && textoOriginal.length > 30) {
-        criarBotaoIA(textarea, textoOriginal);
+      if (textoOriginal && textoOriginal.length > 20) {
+        criarBotaoIA(campo, textoOriginal);
       }
     });
   });
@@ -73,5 +81,5 @@ function observarCamposDinamicos() {
 }
 
 window.addEventListener('load', () => {
-  setTimeout(observarCamposDinamicos, 3000);
+  setTimeout(observarCamposDinamicos, 2000);
 });

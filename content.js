@@ -1,54 +1,73 @@
-function adicionarBotao(container, textarea) {
+function criarBotaoIA(caixa) {
+  if (caixa.parentElement.querySelector('.btn-gerar-ia')) return;
+
   const btn = document.createElement('button');
   btn.textContent = '💬 Gerar comentário IA';
-  btn.style.marginTop = '8px';
-  btn.style.padding = '6px';
+  btn.className = 'btn-gerar-ia';
+  btn.style.marginTop = '6px';
+  btn.style.padding = '6px 10px';
   btn.style.cursor = 'pointer';
   btn.style.background = '#0073b1';
   btn.style.color = '#fff';
   btn.style.border = 'none';
   btn.style.borderRadius = '4px';
-  btn.setAttribute('data-inserido', 'true');
+  btn.style.fontSize = '14px';
+  btn.style.display = 'block';
 
-  btn.onclick = () => {
-    const texto = container.innerText || '';
-    fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook-test/comentario-linkedin', {
+  btn.onclick = async () => {
+    const textoParaGerar = encontrarTextoRelacionado(caixa);
+
+    const resposta = await fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook-test/comentario-linkedin', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ texto })
-    })
-      .then(res => res.json())
-      .then(data => {
-        textarea.value = data.comentario || 'Comentário gerado com IA.';
-        textarea.dispatchEvent(new Event('input', { bubbles: true }));
-      })
-      .catch(err => {
-        console.error('Erro ao gerar comentário IA:', err);
-        alert('Erro ao gerar comentário.');
-      });
+      body: JSON.stringify({ texto: textoParaGerar }),
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const data = await resposta.json();
+    const comentario = data.comentario;
+
+    preencherComentario(caixa, comentario);
   };
 
-  textarea.parentNode.appendChild(btn);
+  caixa.parentElement.appendChild(btn);
 }
 
-function observarCamposDeComentario() {
-  const observer = new MutationObserver(() => {
-    document.querySelectorAll('form').forEach(form => {
-      const textarea = form.querySelector('textarea');
-      const jaTemBotao = form.querySelector('button[data-inserido]');
+function preencherComentario(caixa, texto) {
+  caixa.focus();
+  caixa.innerHTML = ''; // limpa qualquer texto anterior
 
-      if (textarea && !jaTemBotao) {
-        adicionarBotao(form, textarea);
-      }
-    });
+  texto.split('\n').forEach((linha, i) => {
+    if (i > 0) caixa.appendChild(document.createElement('br'));
+    caixa.appendChild(document.createTextNode(linha));
   });
 
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true
+  caixa.dispatchEvent(new InputEvent("input", { bubbles: true }));
+}
+
+function encontrarTextoRelacionado(caixa) {
+  const comentarioPai = caixa.closest('[class*="comments-comment-item"]');
+
+  if (comentarioPai) {
+    const textoComentario = comentarioPai.innerText.trim();
+    if (textoComentario) return textoComentario;
+  }
+
+  const postPai = caixa.closest('[data-id*="urn:li:activity"]');
+  if (postPai) {
+    return postPai.innerText.trim();
+  }
+
+  return document.body.innerText.slice(0, 1000); // fallback
+}
+
+function monitorarFoco() {
+  document.body.addEventListener('focusin', (e) => {
+    if (e.target.getAttribute('contenteditable') === 'true') {
+      criarBotaoIA(e.target);
+    }
   });
 }
 
 window.addEventListener('load', () => {
-  setTimeout(observarCamposDeComentario, 2000);
+  setTimeout(monitorarFoco, 2000);
 });

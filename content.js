@@ -15,11 +15,11 @@ function criarBotaoIA(caixa) {
   btn.style.display = 'block';
 
   btn.onclick = async () => {
-    const postTexto = encontrarTextoRelacionado(caixa);
-    
+    const textoReferencia = encontrarTextoRelacionado(caixa);
+
     const resposta = await fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook-test/comentario-linkedin', {
       method: 'POST',
-      body: JSON.stringify({ texto: postTexto }),
+      body: JSON.stringify({ texto: textoReferencia }),
       headers: { 'Content-Type': 'application/json' }
     });
 
@@ -45,22 +45,25 @@ function preencherComentario(caixa, texto) {
 }
 
 function encontrarTextoRelacionado(caixa) {
-  const container = caixa.closest('[data-id]');
-  if (!container) return document.body.innerText.slice(0, 1000);
+  const isResposta = !!caixa.closest('.comments-comment-item');
 
-  // Busca o comentário ou publicação que está acima da caixa de texto
-  const possiveisElementos = container.querySelectorAll('span[dir="ltr"], div[dir="ltr"]');
-  let texto = '';
-
-  for (let el of possiveisElementos) {
-    const t = el.innerText || el.textContent;
-    if (t && t.length > 30) {
-      texto = t;
-      break;
-    }
+  if (isResposta) {
+    // Estamos respondendo a um comentário
+    const comentarioElement = caixa.closest('.comments-comment-item');
+    const spans = comentarioElement?.querySelectorAll('span[dir="ltr"], div[dir="ltr"]');
+    let textoComentario = '';
+    spans?.forEach(span => {
+      if (span.innerText && span.innerText.length > textoComentario.length) {
+        textoComentario = span.innerText;
+      }
+    });
+    return textoComentario.trim();
+  } else {
+    // Comentando na publicação principal
+    const post = caixa.closest('[data-id]');
+    const textoPost = post?.innerText || '';
+    return textoPost.trim().slice(0, 1000);
   }
-
-  return texto || container.innerText || document.body.innerText.slice(0, 1000);
 }
 
 function monitorarFoco() {

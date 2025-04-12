@@ -15,11 +15,10 @@ function criarBotaoIA(caixa) {
   btn.style.display = 'block';
 
   btn.onclick = async () => {
-    const textoParaGerar = encontrarTextoRelacionado(caixa);
-
+    const postTexto = encontrarTextoRelacionado(caixa);
     const resposta = await fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook-test/comentario-linkedin', {
       method: 'POST',
-      body: JSON.stringify({ texto: textoParaGerar }),
+      body: JSON.stringify({ texto: postTexto }),
       headers: { 'Content-Type': 'application/json' }
     });
 
@@ -34,30 +33,34 @@ function criarBotaoIA(caixa) {
 
 function preencherComentario(caixa, texto) {
   caixa.focus();
-  caixa.innerHTML = ''; // limpa qualquer texto anterior
-
+  caixa.innerHTML = '';
   texto.split('\n').forEach((linha, i) => {
     if (i > 0) caixa.appendChild(document.createElement('br'));
     caixa.appendChild(document.createTextNode(linha));
   });
-
   caixa.dispatchEvent(new InputEvent("input", { bubbles: true }));
 }
 
 function encontrarTextoRelacionado(caixa) {
-  const comentarioPai = caixa.closest('[class*="comments-comment-item"]');
+  // Tenta encontrar o bloco de comentário pai (resposta a um comentário)
+  const blocoResposta = caixa.closest('div.comments-comment-item');
 
-  if (comentarioPai) {
-    const textoComentario = comentarioPai.innerText.trim();
-    if (textoComentario) return textoComentario;
+  if (blocoResposta) {
+    const textoComentarioPai = blocoResposta.querySelector('.update-components-text') || blocoResposta.querySelector('[data-testid="comment-body"]');
+    if (textoComentarioPai) {
+      return textoComentarioPai.innerText || textoComentarioPai.textContent || '';
+    }
   }
 
-  const postPai = caixa.closest('[data-id*="urn:li:activity"]');
+  // Se não for resposta, procura o conteúdo da publicação principal
+  const postPai = caixa.closest('[data-id]');
   if (postPai) {
-    return postPai.innerText.trim();
+    const textoPost = postPai.innerText || postPai.textContent;
+    return textoPost || '';
   }
 
-  return document.body.innerText.slice(0, 1000); // fallback
+  // Fallback
+  return document.body.innerText.slice(0, 1000);
 }
 
 function monitorarFoco() {

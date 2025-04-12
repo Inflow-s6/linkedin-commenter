@@ -16,6 +16,7 @@ function criarBotaoIA(caixa) {
 
   btn.onclick = async () => {
     const postTexto = encontrarTextoRelacionado(caixa);
+    
     const resposta = await fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook-test/comentario-linkedin', {
       method: 'POST',
       body: JSON.stringify({ texto: postTexto }),
@@ -34,33 +35,32 @@ function criarBotaoIA(caixa) {
 function preencherComentario(caixa, texto) {
   caixa.focus();
   caixa.innerHTML = '';
+
   texto.split('\n').forEach((linha, i) => {
     if (i > 0) caixa.appendChild(document.createElement('br'));
     caixa.appendChild(document.createTextNode(linha));
   });
+
   caixa.dispatchEvent(new InputEvent("input", { bubbles: true }));
 }
 
 function encontrarTextoRelacionado(caixa) {
-  // Tenta encontrar o bloco de comentário pai (resposta a um comentário)
-  const blocoResposta = caixa.closest('div.comments-comment-item');
+  const container = caixa.closest('[data-id]');
+  if (!container) return document.body.innerText.slice(0, 1000);
 
-  if (blocoResposta) {
-    const textoComentarioPai = blocoResposta.querySelector('.update-components-text') || blocoResposta.querySelector('[data-testid="comment-body"]');
-    if (textoComentarioPai) {
-      return textoComentarioPai.innerText || textoComentarioPai.textContent || '';
+  // Busca o comentário ou publicação que está acima da caixa de texto
+  const possiveisElementos = container.querySelectorAll('span[dir="ltr"], div[dir="ltr"]');
+  let texto = '';
+
+  for (let el of possiveisElementos) {
+    const t = el.innerText || el.textContent;
+    if (t && t.length > 30) {
+      texto = t;
+      break;
     }
   }
 
-  // Se não for resposta, procura o conteúdo da publicação principal
-  const postPai = caixa.closest('[data-id]');
-  if (postPai) {
-    const textoPost = postPai.innerText || postPai.textContent;
-    return textoPost || '';
-  }
-
-  // Fallback
-  return document.body.innerText.slice(0, 1000);
+  return texto || container.innerText || document.body.innerText.slice(0, 1000);
 }
 
 function monitorarFoco() {

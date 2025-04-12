@@ -1,7 +1,36 @@
-function adicionarBotao(post) {
+// content.js
+
+function gerarComentarioIA(texto, callback) {
+  const botaoOriginal = document.querySelector('.gerar-comentario-ia');
+
+  if (botaoOriginal) botaoOriginal.textContent = 'Gerando...';
+
+  fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook-test/comentario-linkedin', {
+    method: 'POST',
+    body: JSON.stringify({ texto }),
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (botaoOriginal) botaoOriginal.textContent = 'Comentário pronto!';
+      chrome.storage.local.set({ comentario: data.comentario });
+      callback(data.comentario);
+    })
+    .catch(err => {
+      console.error('Erro ao gerar comentário:', err);
+      if (botaoOriginal) botaoOriginal.textContent = 'Erro ao gerar';
+    });
+}
+
+function adicionarBotao(container, textarea, textoExtraido) {
+  if (container.querySelector('.gerar-comentario-ia')) return;
+
   const btn = document.createElement('button');
   btn.textContent = '💬 Gerar comentário IA';
-  btn.style.marginTop = '10px';
+  btn.className = 'gerar-comentario-ia';
+  btn.style.margin = '10px 0';
   btn.style.padding = '6px';
   btn.style.cursor = 'pointer';
   btn.style.background = '#0073b1';
@@ -10,38 +39,32 @@ function adicionarBotao(post) {
   btn.style.borderRadius = '4px';
 
   btn.onclick = () => {
-    const texto = post.innerText;
-    fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook-test/comentario-linkedin', {
-      method: 'POST',
-      body: JSON.stringify({ texto }),
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-    .then(res => res.json())
-    .then(data => {
-      // Mostra alerta
-      alert('Comentário sugerido:\n\n' + data.comentario);
-
-      // Salva o comentário localmente para o popup pegar depois
-      chrome.storage.local.set({ comentario: data.comentario });
-    })
-    .catch(error => {
-      console.error('Erro ao gerar comentário:', error);
-      alert('Erro ao gerar comentário.');
+    gerarComentarioIA(textoExtraido, (comentarioGerado) => {
+      textarea.value = comentarioGerado;
+      textarea.focus();
     });
   };
 
-  post.appendChild(btn);
+  container.appendChild(btn);
 }
 
-function observarPosts() {
+function observarComentarios() {
   const observer = new MutationObserver(() => {
-    document.querySelectorAll('[data-id*="urn:li:activity"]').forEach(post => {
-      if (!post.querySelector('button[data-inserido]')) {
-        adicionarBotao(post);
-        post.querySelector('button:last-of-type').setAttribute('data-inserido', 'true');
+    const caixasComentario = document.querySelectorAll('div.comments-comment-box__form, div.comments-comment-box__reply-form');
+
+    caixasComentario.forEach(caixa => {
+      const textarea = caixa.querySelector('textarea');
+      if (!textarea) return;
+
+      // Encontra o texto da publicação ou comentário associado
+      let textoPost = '';
+      const containerPost = caixa.closest('[data-id]');
+      if (containerPost) {
+        const elementoTexto = containerPost.querySelector('[dir="ltr"]');
+        if (elementoTexto) textoPost = elementoTexto.innerText;
       }
+
+      adicionarBotao(caixa, textarea, textoPost);
     });
   });
 
@@ -49,5 +72,5 @@ function observarPosts() {
 }
 
 window.addEventListener('load', () => {
-  setTimeout(observarPosts, 3000);
+  setTimeout(observarComentarios, 2000);
 });

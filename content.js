@@ -15,7 +15,7 @@ function criarBotaoIA(caixa) {
   btn.style.display = 'block';
 
   btn.onclick = async (event) => {
-    event.preventDefault(); // Evita qualquer envio automático
+    event.preventDefault();
 
     btn.disabled = true;
     btn.textContent = '⏳ Gerando...';
@@ -41,40 +41,40 @@ function criarBotaoIA(caixa) {
 }
 
 function preencherComentario(caixa, texto) {
-  caixa.innerHTML = ''; // Limpa o campo antes de inserir
+  caixa.innerHTML = '';
 
   const fragment = document.createDocumentFragment();
-  const linhas = texto.split('\n');
+  const linhas = texto.trim().split('\n');
 
   linhas.forEach((linha, index) => {
     if (index > 0) fragment.appendChild(document.createElement('br'));
-    fragment.appendChild(document.createTextNode(linha));
+    fragment.appendChild(document.createTextNode(linha.trim()));
   });
 
   caixa.appendChild(fragment);
-
-  // Dispara evento para o LinkedIn reconhecer a edição
   caixa.dispatchEvent(new InputEvent("input", { bubbles: true }));
 }
 
+// ✅ FUNÇÃO AJUSTADA AQUI
 function encontrarTextoRelacionado(caixa) {
-  const isResposta = !!caixa.closest('.comments-comment-item');
+  const btn = caixa.parentElement.querySelector('.btn-gerar-ia');
+  if (!btn) return '';
 
-  if (isResposta) {
-    const comentarioElement = caixa.closest('.comments-comment-item');
-    const spans = comentarioElement?.querySelectorAll('span[dir="ltr"], div[dir="ltr"]');
+  const comentarioElement = btn.closest('.comments-comment-item');
+  if (comentarioElement) {
+    const spans = comentarioElement.querySelectorAll('span[dir="ltr"], div[dir="ltr"]');
     let textoComentario = '';
-    spans?.forEach(span => {
+    spans.forEach(span => {
       if (span.innerText && span.innerText.length > textoComentario.length) {
         textoComentario = span.innerText;
       }
     });
     return textoComentario.trim();
-  } else {
-    const post = caixa.closest('[data-id]');
-    const textoPost = post?.innerText || '';
-    return textoPost.trim().slice(0, 1000);
   }
+
+  const post = caixa.closest('[data-id]');
+  const textoPost = post?.innerText || '';
+  return textoPost.trim().slice(0, 1000);
 }
 
 function monitorarFoco() {

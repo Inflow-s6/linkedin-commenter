@@ -55,12 +55,15 @@ function preencherComentario(caixa, texto) {
   caixa.dispatchEvent(new InputEvent("input", { bubbles: true }));
 }
 
-// ✅ FUNÇÃO AJUSTADA AQUI
+// ✅ AJUSTE QUE RESOLVE O PROBLEMA DE SUBCOMENTÁRIOS
 function encontrarTextoRelacionado(caixa) {
-  const btn = caixa.parentElement.querySelector('.btn-gerar-ia');
-  if (!btn) return '';
+  let comentarioElement = caixa;
 
-  const comentarioElement = btn.closest('.comments-comment-item');
+  // Sobe até encontrar o comentário diretamente relacionado (mais próximo)
+  while (comentarioElement && !comentarioElement.classList.contains('comments-comment-item')) {
+    comentarioElement = comentarioElement.parentElement;
+  }
+
   if (comentarioElement) {
     const spans = comentarioElement.querySelectorAll('span[dir="ltr"], div[dir="ltr"]');
     let textoComentario = '';
@@ -72,6 +75,7 @@ function encontrarTextoRelacionado(caixa) {
     return textoComentario.trim();
   }
 
+  // Se não encontrar comentário (publicação principal)
   const post = caixa.closest('[data-id]');
   const textoPost = post?.innerText || '';
   return textoPost.trim().slice(0, 1000);

@@ -43,17 +43,11 @@ function criarBotaoIA(caixa) {
 function preencherComentario(caixa, texto) {
   caixa.innerHTML = ''; // Limpa o campo antes de inserir
 
-  const textoLimpo = texto.trim(); // <<< REMOVENDO espaços/quebras extras no início e fim
+  // Remove espaços em branco e quebras de linha no início e fim
+  const textoLimpo = texto.trim().replace(/^\s*\n/gm, '').replace(/\n{2,}/g, '\n');
 
-  const fragment = document.createDocumentFragment();
-  const linhas = textoLimpo.split('\n');
-
-  linhas.forEach((linha, index) => {
-    if (index > 0) fragment.appendChild(document.createElement('br'));
-    fragment.appendChild(document.createTextNode(linha.trim())); // <<< também remove espaços extras por linha
-  });
-
-  caixa.appendChild(fragment);
+  // Insere o texto limpo diretamente
+  caixa.textContent = textoLimpo;
 
   // Dispara evento para o LinkedIn reconhecer a edição
   caixa.dispatchEvent(new InputEvent("input", { bubbles: true }));

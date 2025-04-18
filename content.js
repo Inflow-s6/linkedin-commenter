@@ -17,7 +17,6 @@ function criarBotaoIA(caixa) {
   btn.onclick = async (event) => {
     event.preventDefault(); // Evita qualquer envio automático
 
-    // Evita ações antes do preenchimento
     btn.disabled = true;
     btn.textContent = '⏳ Gerando...';
 
@@ -34,7 +33,6 @@ function criarBotaoIA(caixa) {
 
     preencherComentario(caixa, comentario);
 
-    // Restaura o botão
     btn.disabled = false;
     btn.textContent = '💬 Gerar comentário IA';
   };
@@ -43,18 +41,20 @@ function criarBotaoIA(caixa) {
 }
 
 function preencherComentario(caixa, texto) {
-  // Garante que não dispare envio automático
-  caixa.innerHTML = ''; // limpa o campo
+  caixa.innerHTML = ''; // Limpa o campo antes de inserir
 
-  setTimeout(() => {
-    texto.split('\n').forEach((linha, i) => {
-      if (i > 0) caixa.appendChild(document.createElement('br'));
-      caixa.appendChild(document.createTextNode(linha));
-    });
+  const fragment = document.createDocumentFragment();
+  const linhas = texto.split('\n');
 
-    // Atualiza o estado do LinkedIn
-    caixa.dispatchEvent(new InputEvent("input", { bubbles: true }));
-  }, 100);
+  linhas.forEach((linha, index) => {
+    if (index > 0) fragment.appendChild(document.createElement('br'));
+    fragment.appendChild(document.createTextNode(linha));
+  });
+
+  caixa.appendChild(fragment);
+
+  // Dispara evento para o LinkedIn reconhecer a edição
+  caixa.dispatchEvent(new InputEvent("input", { bubbles: true }));
 }
 
 function encontrarTextoRelacionado(caixa) {

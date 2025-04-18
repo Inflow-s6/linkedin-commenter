@@ -43,12 +43,14 @@ function criarBotaoIA(caixa) {
 function preencherComentario(caixa, texto) {
   caixa.innerHTML = ''; // Limpa o campo antes de inserir
 
+  const textoLimpo = texto.trim(); // <<< REMOVENDO espaços/quebras extras no início e fim
+
   const fragment = document.createDocumentFragment();
-  const linhas = texto.split('\n');
+  const linhas = textoLimpo.split('\n');
 
   linhas.forEach((linha, index) => {
     if (index > 0) fragment.appendChild(document.createElement('br'));
-    fragment.appendChild(document.createTextNode(linha));
+    fragment.appendChild(document.createTextNode(linha.trim())); // <<< também remove espaços extras por linha
   });
 
   caixa.appendChild(fragment);

@@ -23,7 +23,7 @@ function criarBotaoIA(caixa) {
 
     const textoReferencia = encontrarTextoRelacionado(caixa);
 
-    const resposta = await fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook-test/comentario-linkedin', {
+    const resposta = await fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook/comentario-linkedin', {
       method: 'POST',
       body: JSON.stringify({ texto: textoReferencia }),
       headers: { 'Content-Type': 'application/json' }

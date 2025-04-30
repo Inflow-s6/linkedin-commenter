@@ -20,11 +20,14 @@ function criarBotaoIA(caixa) {
     btn.disabled = true;
     btn.textContent = '⏳ Gerando...';
 
-    const textoReferencia = encontrarTextoRelacionado(caixa);
+    const referencia = encontrarTextoRelacionado(caixa);
 
     const resposta = await fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook/comentario-linkedin', {
       method: 'POST',
-      body: JSON.stringify({ texto: textoReferencia }),
+      body: JSON.stringify({
+        texto: referencia.texto,
+        tipoDetectado: referencia.tipo
+      }),
       headers: { 'Content-Type': 'application/json' }
     });
 
@@ -55,11 +58,10 @@ function preencherComentario(caixa, texto) {
   caixa.dispatchEvent(new InputEvent("input", { bubbles: true }));
 }
 
-// ✅ AJUSTE QUE RESOLVE O PROBLEMA DE SUBCOMENTÁRIOS
+// ✅ Corrigido para detectar tipo: publicacao, resposta ou subcomentario
 function encontrarTextoRelacionado(caixa) {
   let comentarioElement = caixa;
 
-  // Sobe até encontrar o comentário diretamente relacionado (mais próximo)
   while (comentarioElement && !comentarioElement.classList.contains('comments-comment-item')) {
     comentarioElement = comentarioElement.parentElement;
   }
@@ -72,13 +74,23 @@ function encontrarTextoRelacionado(caixa) {
         textoComentario = span.innerText;
       }
     });
-    return textoComentario.trim();
+
+    const isSubcomentario = comentarioElement.closest('.comments-comment-item__nested');
+    const tipo = isSubcomentario ? 'subcomentario' : 'resposta';
+
+    return {
+      texto: textoComentario.trim(),
+      tipo
+    };
   }
 
-  // Se não encontrar comentário (publicação principal)
+  // Caso não encontre comentário, assume que é uma publicação principal
   const post = caixa.closest('[data-id]');
   const textoPost = post?.innerText || '';
-  return textoPost.trim().slice(0, 1000);
+  return {
+    texto: textoPost.trim().slice(0, 1000),
+    tipo: 'publicacao'
+  };
 }
 
 function monitorarFoco() {

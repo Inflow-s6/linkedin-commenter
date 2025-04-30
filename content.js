@@ -22,6 +22,9 @@ function criarBotaoIA(caixa) {
 
     const referencia = encontrarTextoRelacionado(caixa);
 
+    // Salva o nome no atributo data para uso posterior
+    caixa.dataset.nomeReferencia = referencia.nome;
+
     const resposta = await fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook/comentario-linkedin', {
       method: 'POST',
       body: JSON.stringify({
@@ -48,8 +51,13 @@ function preencherComentario(caixa, texto) {
   caixa.innerHTML = '';
 
   const fragment = document.createDocumentFragment();
-  const linhas = texto.trim().split('\n');
+  const nome = caixa.dataset.nomeReferencia;
 
+  if (nome) {
+    fragment.appendChild(document.createTextNode(`@${nome} `));
+  }
+
+  const linhas = texto.trim().split('\n');
   linhas.forEach((linha, index) => {
     if (index > 0) fragment.appendChild(document.createElement('br'));
     fragment.appendChild(document.createTextNode(linha.trim()));
@@ -78,8 +86,9 @@ function encontrarTextoRelacionado(caixa) {
     const isSubcomentario = comentarioElement.closest('.comments-comment-item__nested');
     const tipo = isSubcomentario ? 'subcomentario' : 'resposta';
 
-    const nomeElemento = comentarioElement.querySelector('a[href*="/in/"]');
-    const nomePessoa = nomeElemento?.innerText?.trim() || '';
+    const nomePessoa =
+      comentarioElement.querySelector('.comments-comment-meta__description-title')?.innerText?.trim() ||
+      comentarioElement.querySelector('a[href*="/in/"]')?.innerText?.trim() || '';
 
     return {
       texto: textoComentario.trim(),
@@ -90,7 +99,9 @@ function encontrarTextoRelacionado(caixa) {
 
   const post = caixa.closest('[data-id]');
   const textoPost = post?.innerText || '';
-  const nomePessoa = post?.querySelector('span.feed-shared-actor__name')?.innerText?.trim() || '';
+  const nomePessoa =
+    post?.querySelector('.update-components-actor__title span[dir="ltr"]')?.innerText?.trim() ||
+    post?.querySelector('a[href*="/in/"]')?.innerText?.trim() || '';
 
   return {
     texto: textoPost.trim().slice(0, 1000),

@@ -33,9 +33,9 @@ function criarBotaoIA(caixa) {
     });
 
     const data = await resposta.json();
-    const comentario = data.comentario;
+    const comentario = `@${referencia.nome} ${data.comentario}`;
 
-    preencherComentario(caixa, `@${referencia.nome} ${comentario}`);
+    preencherComentario(caixa, comentario);
 
     btn.disabled = false;
     btn.textContent = '💬 Gerar comentário IA';
@@ -48,25 +48,17 @@ function preencherComentario(caixa, texto) {
   caixa.innerHTML = '';
 
   const fragment = document.createDocumentFragment();
-  const linhas = texto.trim().split('\n');
-
-  linhas.forEach((linha, index) => {
-    if (index > 0) fragment.appendChild(document.createElement('br'));
-    fragment.appendChild(document.createTextNode(linha.trim()));
-  });
+  fragment.appendChild(document.createTextNode(texto.trim()));
 
   caixa.appendChild(fragment);
   caixa.dispatchEvent(new InputEvent("input", { bubbles: true }));
 }
 
 function encontrarTextoRelacionado(caixa) {
-  let comentarioElement = caixa;
-
-  while (comentarioElement && !comentarioElement.classList.contains('comments-comment-item')) {
-    comentarioElement = comentarioElement.parentElement;
-  }
+  let comentarioElement = caixa.closest('.comments-comment-item');
 
   if (comentarioElement) {
+    // Comentário ou resposta
     const spans = comentarioElement.querySelectorAll('span[dir="ltr"], div[dir="ltr"]');
     let textoComentario = '';
     spans.forEach(span => {
@@ -78,24 +70,24 @@ function encontrarTextoRelacionado(caixa) {
     const isSubcomentario = comentarioElement.closest('.comments-comment-item__nested');
     const tipo = isSubcomentario ? 'subcomentario' : 'resposta';
 
-    const nomeElemento = comentarioElement.querySelector('span.comments-comment-meta__description-title');
-    const nomePessoa = nomeElemento?.innerText?.trim() || '';
+    const nome = comentarioElement.querySelector('.comments-comment-item__main-content span.comments-comment-meta__description-title')?.innerText.trim() || '';
 
     return {
       texto: textoComentario.trim(),
       tipo,
-      nome: nomePessoa
+      nome
     };
   }
 
+  // Caso seja comentário principal na publicação
   const post = caixa.closest('[data-id]');
   const textoPost = post?.innerText || '';
-  const nomePessoa = post?.querySelector('span.feed-shared-actor__name')?.innerText?.trim() || '';
+  const nomePost = post?.querySelector('span.update-components-actor__title > span > span')?.innerText?.trim() || '';
 
   return {
     texto: textoPost.trim().slice(0, 1000),
     tipo: 'publicacao',
-    nome: nomePessoa
+    nome: nomePost
   };
 }
 

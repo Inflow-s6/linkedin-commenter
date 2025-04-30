@@ -38,7 +38,7 @@ function criarBotaoIA(caixa) {
     const data = await resposta.json();
     const comentario = data.comentario;
 
-    preencherComentario(caixa, comentario);
+    preencherComentario(caixa, comentario, referencia.nome);
 
     btn.disabled = false;
     btn.textContent = '💬 Gerar comentário IA';
@@ -47,23 +47,15 @@ function criarBotaoIA(caixa) {
   caixa.parentElement.appendChild(btn);
 }
 
-function preencherComentario(caixa, texto) {
+function preencherComentario(caixa, texto, nome) {
   caixa.innerHTML = '';
 
+  const comentarioFinal = nome ? `@${nome} ${texto.trim()}` : texto.trim();
+
   const fragment = document.createDocumentFragment();
-  const nome = caixa.dataset.nomeReferencia;
-
-  if (nome) {
-    fragment.appendChild(document.createTextNode(`@${nome} `));
-  }
-
-  const linhas = texto.trim().split('\n');
-  linhas.forEach((linha, index) => {
-    if (index > 0) fragment.appendChild(document.createElement('br'));
-    fragment.appendChild(document.createTextNode(linha.trim()));
-  });
-
+  fragment.appendChild(document.createTextNode(comentarioFinal));
   caixa.appendChild(fragment);
+
   caixa.dispatchEvent(new InputEvent("input", { bubbles: true }));
 }
 

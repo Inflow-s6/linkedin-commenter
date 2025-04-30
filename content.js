@@ -22,9 +22,6 @@ function criarBotaoIA(caixa) {
 
     const referencia = encontrarTextoRelacionado(caixa);
 
-    // Salva o nome no atributo data para uso posterior
-    caixa.dataset.nomeReferencia = referencia.nome;
-
     const resposta = await fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook/comentario-linkedin', {
       method: 'POST',
       body: JSON.stringify({
@@ -38,7 +35,7 @@ function criarBotaoIA(caixa) {
     const data = await resposta.json();
     const comentario = data.comentario;
 
-    preencherComentario(caixa, comentario, referencia.nome);
+    preencherComentario(caixa, `@${referencia.nome} ${comentario}`);
 
     btn.disabled = false;
     btn.textContent = '💬 Gerar comentário IA';
@@ -47,15 +44,18 @@ function criarBotaoIA(caixa) {
   caixa.parentElement.appendChild(btn);
 }
 
-function preencherComentario(caixa, texto, nome) {
+function preencherComentario(caixa, texto) {
   caixa.innerHTML = '';
 
-  const comentarioFinal = nome ? `@${nome} ${texto.trim()}` : texto.trim();
-
   const fragment = document.createDocumentFragment();
-  fragment.appendChild(document.createTextNode(comentarioFinal));
-  caixa.appendChild(fragment);
+  const linhas = texto.trim().split('\n');
 
+  linhas.forEach((linha, index) => {
+    if (index > 0) fragment.appendChild(document.createElement('br'));
+    fragment.appendChild(document.createTextNode(linha.trim()));
+  });
+
+  caixa.appendChild(fragment);
   caixa.dispatchEvent(new InputEvent("input", { bubbles: true }));
 }
 
@@ -78,9 +78,8 @@ function encontrarTextoRelacionado(caixa) {
     const isSubcomentario = comentarioElement.closest('.comments-comment-item__nested');
     const tipo = isSubcomentario ? 'subcomentario' : 'resposta';
 
-    const nomePessoa =
-      comentarioElement.querySelector('.comments-comment-meta__description-title')?.innerText?.trim() ||
-      comentarioElement.querySelector('a[href*="/in/"]')?.innerText?.trim() || '';
+    const nomeElemento = comentarioElement.querySelector('span.comments-comment-meta__description-title');
+    const nomePessoa = nomeElemento?.innerText?.trim() || '';
 
     return {
       texto: textoComentario.trim(),
@@ -91,9 +90,7 @@ function encontrarTextoRelacionado(caixa) {
 
   const post = caixa.closest('[data-id]');
   const textoPost = post?.innerText || '';
-  const nomePessoa =
-    post?.querySelector('.update-components-actor__title span[dir="ltr"]')?.innerText?.trim() ||
-    post?.querySelector('a[href*="/in/"]')?.innerText?.trim() || '';
+  const nomePessoa = post?.querySelector('span.feed-shared-actor__name')?.innerText?.trim() || '';
 
   return {
     texto: textoPost.trim().slice(0, 1000),

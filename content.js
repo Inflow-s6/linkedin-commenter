@@ -26,15 +26,23 @@ function criarBotaoIA(caixa) {
       method: 'POST',
       body: JSON.stringify({
         texto: referencia.texto,
-        tipoDetectado: referencia.tipo
+        tipoDetectado: referencia.tipo,
+        nome: referencia.nome
       }),
       headers: { 'Content-Type': 'application/json' }
     });
 
     const data = await resposta.json();
-    const comentario = data.comentario;
+    const comentarioIA = data.comentario || '';
 
-    const comentarioFinal = referencia.nome ? `@${referencia.nome} ${comentario}` : comentario;
+    // Garante @Nome no início, sem duplicação
+    let comentarioFinal = comentarioIA;
+    const nome = referencia.nome?.trim();
+
+    if (nome && !comentarioIA.startsWith(`@${nome}`)) {
+      comentarioFinal = `@${nome} ${comentarioIA}`;
+    }
+
     preencherComentario(caixa, comentarioFinal);
 
     btn.disabled = false;
@@ -48,9 +56,14 @@ function preencherComentario(caixa, texto) {
   caixa.innerHTML = '';
 
   const fragment = document.createDocumentFragment();
-  fragment.appendChild(document.createTextNode(texto));
-  caixa.appendChild(fragment);
+  const linhas = texto.trim().split('\n');
 
+  linhas.forEach((linha, index) => {
+    if (index > 0) fragment.appendChild(document.createElement('br'));
+    fragment.appendChild(document.createTextNode(linha.trim()));
+  });
+
+  caixa.appendChild(fragment);
   caixa.dispatchEvent(new InputEvent("input", { bubbles: true }));
 }
 
@@ -73,8 +86,9 @@ function encontrarTextoRelacionado(caixa) {
     const isSubcomentario = comentarioElement.closest('.comments-comment-item__nested');
     const tipo = isSubcomentario ? 'subcomentario' : 'resposta';
 
+    // Nome em respostas
     const nomeSpan = comentarioElement.querySelector('.comments-comment-meta__description-title');
-    const nomePessoa = nomeSpan?.innerText?.trim() || '';
+    const nomePessoa = nomeSpan?.textContent?.trim() || '';
 
     return {
       texto: textoComentario.trim(),
@@ -83,9 +97,10 @@ function encontrarTextoRelacionado(caixa) {
     };
   }
 
+  // Nome em publicações
   const post = caixa.closest('[data-id]');
   const textoPost = post?.innerText || '';
-  const nomePessoa = post?.querySelector('.update-components-actor__title span[dir="ltr"]')?.innerText?.trim() || '';
+  const nomePessoa = post?.querySelector('.update-components-actor__name')?.textContent?.trim() || '';
 
   return {
     texto: textoPost.trim().slice(0, 1000),

@@ -26,7 +26,8 @@ function criarBotaoIA(caixa) {
       method: 'POST',
       body: JSON.stringify({
         texto: referencia.texto,
-        tipoDetectado: referencia.tipo
+        tipoDetectado: referencia.tipo,
+        nome: referencia.nome
       }),
       headers: { 'Content-Type': 'application/json' }
     });
@@ -58,7 +59,6 @@ function preencherComentario(caixa, texto) {
   caixa.dispatchEvent(new InputEvent("input", { bubbles: true }));
 }
 
-// ✅ Corrigido para detectar tipo: publicacao, resposta ou subcomentario
 function encontrarTextoRelacionado(caixa) {
   let comentarioElement = caixa;
 
@@ -78,18 +78,24 @@ function encontrarTextoRelacionado(caixa) {
     const isSubcomentario = comentarioElement.closest('.comments-comment-item__nested');
     const tipo = isSubcomentario ? 'subcomentario' : 'resposta';
 
+    const nomeElemento = comentarioElement.querySelector('a[href*="/in/"]');
+    const nomePessoa = nomeElemento?.innerText?.trim() || '';
+
     return {
       texto: textoComentario.trim(),
-      tipo
+      tipo,
+      nome: nomePessoa
     };
   }
 
-  // Caso não encontre comentário, assume que é uma publicação principal
   const post = caixa.closest('[data-id]');
   const textoPost = post?.innerText || '';
+  const nomePessoa = post?.querySelector('span.feed-shared-actor__name')?.innerText?.trim() || '';
+
   return {
     texto: textoPost.trim().slice(0, 1000),
-    tipo: 'publicacao'
+    tipo: 'publicacao',
+    nome: nomePessoa
   };
 }
 

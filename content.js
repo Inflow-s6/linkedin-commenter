@@ -33,17 +33,9 @@ function criarBotaoIA(caixa) {
     });
 
     const data = await resposta.json();
-    const comentarioIA = data.comentario || '';
+    const comentario = data.comentario;
 
-    // Garante @Nome no início, sem duplicação
-    let comentarioFinal = comentarioIA;
-    const nome = referencia.nome?.trim();
-
-    if (nome && !comentarioIA.startsWith(`@${nome}`)) {
-      comentarioFinal = `@${nome} ${comentarioIA}`;
-    }
-
-    preencherComentario(caixa, comentarioFinal);
+    preencherComentario(caixa, `@${referencia.nome} ${comentario}`);
 
     btn.disabled = false;
     btn.textContent = '💬 Gerar comentário IA';
@@ -86,9 +78,8 @@ function encontrarTextoRelacionado(caixa) {
     const isSubcomentario = comentarioElement.closest('.comments-comment-item__nested');
     const tipo = isSubcomentario ? 'subcomentario' : 'resposta';
 
-    // Nome em respostas
-    const nomeSpan = comentarioElement.querySelector('.comments-comment-meta__description-title');
-    const nomePessoa = nomeSpan?.textContent?.trim() || '';
+    const nomeElemento = comentarioElement.querySelector('span.comments-comment-meta__description-title');
+    const nomePessoa = nomeElemento?.innerText?.trim() || '';
 
     return {
       texto: textoComentario.trim(),
@@ -97,10 +88,9 @@ function encontrarTextoRelacionado(caixa) {
     };
   }
 
-  // Nome em publicações
   const post = caixa.closest('[data-id]');
   const textoPost = post?.innerText || '';
-  const nomePessoa = post?.querySelector('.update-components-actor__name')?.textContent?.trim() || '';
+  const nomePessoa = post?.querySelector('span.feed-shared-actor__name')?.innerText?.trim() || '';
 
   return {
     texto: textoPost.trim().slice(0, 1000),

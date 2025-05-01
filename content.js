@@ -4,41 +4,44 @@ function criarBotaoIA(caixa) {
   const btn = document.createElement('button');
   btn.textContent = '💬 Gerar comentário IA';
   btn.className = 'btn-gerar-ia';
-  btn.style.marginTop = '6px';
-  btn.style.padding = '6px 10px';
-  btn.style.cursor = 'pointer';
-  btn.style.background = '#0073b1';
-  btn.style.color = '#fff';
-  btn.style.border = 'none';
-  btn.style.borderRadius = '4px';
-  btn.style.fontSize = '14px';
-  btn.style.display = 'block';
+  Object.assign(btn.style, {
+    marginTop: '6px',
+    padding: '6px 10px',
+    cursor: 'pointer',
+    background: '#0073b1',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    fontSize: '14px',
+    display: 'block',
+  });
 
   btn.onclick = async (event) => {
     event.preventDefault();
-
     btn.disabled = true;
     btn.textContent = '⏳ Gerando...';
 
     const referencia = encontrarTextoRelacionado(caixa);
 
-    const resposta = await fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook/comentario-linkedin', {
-      method: 'POST',
-      body: JSON.stringify({
-        texto: referencia.texto,
-        tipoDetectado: referencia.tipo,
-        nome: referencia.nome
-      }),
-      headers: { 'Content-Type': 'application/json' }
-    });
+    const resposta = await fetch(
+      'https://n8n-n8n.dodhyu.easypanel.host/webhook/comentario-linkedin',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          texto: referencia.texto,
+          tipoDetectado: referencia.tipo,
+          nome: referencia.nome,
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
 
     const data = await resposta.json();
     const comentarioIA = data.comentario || '';
 
-    // Garante @Nome no início, sem duplicação
+    // Garante @Nome no início, sem duplicar
     let comentarioFinal = comentarioIA;
     const nome = referencia.nome?.trim();
-
     if (nome && !comentarioIA.startsWith(`@${nome}`)) {
       comentarioFinal = `@${nome} ${comentarioIA}`;
     }
@@ -54,58 +57,63 @@ function criarBotaoIA(caixa) {
 
 function preencherComentario(caixa, texto) {
   caixa.innerHTML = '';
-
   const fragment = document.createDocumentFragment();
   const linhas = texto.trim().split('\n');
-
   linhas.forEach((linha, index) => {
     if (index > 0) fragment.appendChild(document.createElement('br'));
     fragment.appendChild(document.createTextNode(linha.trim()));
   });
-
   caixa.appendChild(fragment);
-  caixa.dispatchEvent(new InputEvent("input", { bubbles: true }));
+  caixa.dispatchEvent(new InputEvent('input', { bubbles: true }));
 }
 
 function encontrarTextoRelacionado(caixa) {
-  let comentarioElement = caixa;
-
-  while (comentarioElement && !comentarioElement.classList.contains('comments-comment-item')) {
-    comentarioElement = comentarioElement.parentElement;
+  // 1) tenta resposta/subcomentário
+  let el = caixa;
+  while (el && !el.classList.contains('comments-comment-item')) {
+    el = el.parentElement;
   }
-
-  if (comentarioElement) {
-    const spans = comentarioElement.querySelectorAll('span[dir="ltr"], div[dir="ltr"]');
-    let textoComentario = '';
-    spans.forEach(span => {
-      if (span.innerText && span.innerText.length > textoComentario.length) {
-        textoComentario = span.innerText;
-      }
+  if (el) {
+    const spans = el.querySelectorAll('span[dir="ltr"], div[dir="ltr"]');
+    let texto = '';
+    spans.forEach((s) => {
+      if (s.innerText.length > texto.length) texto = s.innerText;
     });
 
-    const isSubcomentario = comentarioElement.closest('.comments-comment-item__nested');
-    const tipo = isSubcomentario ? 'subcomentario' : 'resposta';
+    const isNested = !!el.closest('.comments-comment-item__nested');
+    const tipo = isNested ? 'subcomentario' : 'resposta';
 
-    // Nome em respostas
-    const nomeSpan = comentarioElement.querySelector('.comments-comment-meta__description-title');
-    const nomePessoa = nomeSpan?.textContent?.trim() || '';
+    // nome na resposta fica em .comments-comment-meta__description-title
+    const nomeSpan = el.querySelector('.comments-comment-meta__description-title');
+    const nome = nomeSpan?.textContent?.trim() || '';
 
-    return {
-      texto: textoComentario.trim(),
-      tipo,
-      nome: nomePessoa
-    };
+    return { texto: texto.trim(), tipo, nome };
   }
 
-  // Nome em publicações
-  const post = caixa.closest('[data-id]');
-  const textoPost = post?.innerText || '';
-  const nomePessoa = post?.querySelector('.update-components-actor__name')?.textContent?.trim() || '';
+  // 2) comentário em post (feed, perfil ou newsletter)
+  //   tenta container feed
+  let post = caixa.closest('[data-id]');
+  //   fallback para perfil/newsletter (article[data-urn])
+  if (!post) post = caixa.closest('article[data-urn]') || caixa.closest('article');
+
+  const full = post?.innerText || '';
+  let nome = '';
+
+  // se encontrar "\nSugestões\n", captura o que vem depois como nome
+  const marker = '\nSugestões\n';
+  const idx = full.indexOf(marker);
+  let texto = full;
+  if (idx !== -1) {
+    const after = full.slice(idx + marker.length);
+    const [capturado, ...rest] = after.split('\n');
+    nome = capturado.trim();
+    texto = rest.join('\n');
+  }
 
   return {
-    texto: textoPost.trim().slice(0, 1000),
+    texto: texto.trim().slice(0, 1000),
     tipo: 'publicacao',
-    nome: nomePessoa
+    nome,
   };
 }
 

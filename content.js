@@ -1,7 +1,6 @@
 // content.js
 
 function criarBotaoIA(caixa) {
-  // evita botões duplicados
   if (caixa.parentElement.querySelector('.btn-gerar-ia')) return;
 
   const btn = document.createElement('button');
@@ -19,27 +18,24 @@ function criarBotaoIA(caixa) {
     display: 'block',
   });
 
-  btn.onclick = async (event) => {
-    event.preventDefault();
+  btn.onclick = async (e) => {
+    e.preventDefault();
     btn.disabled = true;
     btn.textContent = '⏳ Gerando...';
 
-    const referencia = encontrarTextoRelacionado(caixa);
-
-    const resp = await fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook/comentario-linkedin', {
+    const ref = encontrarTextoRelacionado(caixa);
+    const res = await fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook/comentario-linkedin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        texto: referencia.texto,
-        tipoDetectado: referencia.tipo,
-        nome: referencia.nome,
+        texto: ref.texto,
+        tipoDetectado: ref.tipo,
+        nome: ref.nome,
       }),
     });
 
-    const data = await resp.json();
-    const comentarioIA = data.comentario || '';
-
-    preencherComentario(caixa, comentarioIA);
+    const data = await res.json();
+    preencherComentario(caixa, data.comentario || '');
 
     btn.disabled = false;
     btn.textContent = '💬 Gerar comentário IA';
@@ -50,61 +46,57 @@ function criarBotaoIA(caixa) {
 
 function preencherComentario(caixa, texto) {
   caixa.innerHTML = '';
-  const fragment = document.createDocumentFragment();
-  texto.trim().split('\n').forEach((linha, i) => {
-    if (i > 0) fragment.appendChild(document.createElement('br'));
-    fragment.appendChild(document.createTextNode(linha.trim()));
+  const frag = document.createDocumentFragment();
+  texto.trim().split('\n').forEach((ln, i) => {
+    if (i > 0) frag.appendChild(document.createElement('br'));
+    frag.appendChild(document.createTextNode(ln.trim()));
   });
-  caixa.appendChild(fragment);
+  caixa.appendChild(frag);
   caixa.dispatchEvent(new InputEvent('input', { bubbles: true }));
 }
 
-
 function encontrarTextoRelacionado(caixa) {
-  // 1) se for resposta (comentário ou subcomentário)
+  // 1) resposta ou subcomentário
   let elm = caixa;
   while (elm && !elm.classList.contains('comments-comment-item')) {
     elm = elm.parentElement;
   }
   if (elm) {
-    // pega o texto do comentário mais longo
     const spans = elm.querySelectorAll('span[dir="ltr"], div[dir="ltr"]');
     let txt = '';
     spans.forEach(s => {
-      if (s.innerText && s.innerText.length > txt.length) txt = s.innerText;
+      if (s.innerText.length > txt.length) txt = s.innerText;
     });
     const isSub = !!elm.closest('.comments-comment-item__nested');
     const tipo = isSub ? 'subcomentario' : 'resposta';
-    // pega nome do autor do comentário
-    const nomeSpan = elm.querySelector('.comments-comment-meta__description-title');
-    const nome = nomeSpan?.textContent.trim() || '';
+    const nome = elm.querySelector('.comments-comment-meta__description-title')?.innerText.trim() || '';
     return { texto: txt.trim(), tipo, nome };
   }
 
-  // 2) se for publicação no feed ou perfil
-  let post = caixa.closest('[data-id]');  
+  // 2) publicação em feed ou perfil
+  let post = caixa.closest('[data-id]');
   if (post) {
-    const textoPost = post.innerText.trim().slice(0, 1000);
-    const nomeActor = post.querySelector('.feed-shared-actor__name')?.innerText.trim()
-                   || post.querySelector('.update-components-actor__name')?.innerText.trim()
-                   || '';
-    return { texto: textoPost, tipo: 'publicacao', nome: nomeActor };
+    const txt = post.innerText.trim().slice(0, 1000);
+    const nome = post.querySelector('.feed-shared-actor__name, .update-components-actor__name')?.innerText.trim() || '';
+    return { texto: txt, tipo: 'publicacao', nome };
   }
 
-  // 3) se for newsletter / artigo imersivo
+  // 3) newsletter / artigo imersivo
   post = caixa.closest('article[itemtype="http://schema.org/NewsArticle"]');
   if (post) {
-    // autor
-    const auth = post.querySelector('.reader-author-info__name')
-               || post.querySelector('header [data-test-reader-author-name]');
-    const nome = auth?.innerText.trim() || '';
-    // todo o texto visível do container imersivo
-    const root = post.querySelector('[data-scaffold-immersive-reader-content]');
-    const texto = root ? root.innerText.trim() : '';
+    // pega nome do autor (header da newsletter)
+    const nome = post.querySelector('[data-scaffold-immersive-reader-author]')?.innerText.trim()
+              || post.querySelector('.reader-author-info__name')?.innerText.trim()
+              || '';
+    // seleciona o container inteiro do texto
+    const container =
+      post.querySelector('[data-scaffold-immersive-reader-content]') ||
+      post.querySelector('.reader-content-blocks-container');
+    const texto = container?.innerText.trim() || '';
     return { texto, tipo: 'newsletter', nome };
   }
 
-  // fallback genérico
+  // fallback
   return { texto: caixa.innerText.trim(), tipo: 'publicacao', nome: '' };
 }
 

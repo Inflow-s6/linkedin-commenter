@@ -6,36 +6,39 @@ function criarBotaoIA(caixa) {
   const btn = document.createElement('button');
   btn.textContent = '💬 Gerar comentário IA';
   btn.className = 'btn-gerar-ia';
-  Object.assign(btn.style, {
-    marginTop: '6px',
-    padding: '6px 10px',
-    cursor: 'pointer',
-    background: '#0073b1',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '4px',
-    fontSize: '14px',
-    display: 'block',
-  });
+  btn.style.marginTop = '6px';
+  btn.style.padding = '6px 10px';
+  btn.style.cursor = 'pointer';
+  btn.style.background = '#0073b1';
+  btn.style.color = '#fff';
+  btn.style.border = 'none';
+  btn.style.borderRadius = '4px';
+  btn.style.fontSize = '14px';
+  btn.style.display = 'block';
 
-  btn.onclick = async (e) => {
-    e.preventDefault();
+  btn.onclick = async (event) => {
+    event.preventDefault();
     btn.disabled = true;
     btn.textContent = '⏳ Gerando...';
 
-    const ref = encontrarTextoRelacionado(caixa);
-    const res = await fetch('https://n8n-n8n.dodhyu.easypanel.host/webhook/comentario-linkedin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        texto: ref.texto,
-        tipoDetectado: ref.tipo,
-        nome: ref.nome,
-      }),
-    });
+    const referencia = encontrarTextoRelacionado(caixa);
 
-    const data = await res.json();
-    preencherComentario(caixa, data.comentario || '');
+    const resposta = await fetch(
+      'https://n8n-n8n.dodhyu.easypanel.host/webhook/comentario-linkedin',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          texto: referencia.texto,
+          tipoDetectado: referencia.tipo
+        }),
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+
+    const data = await resposta.json();
+    const comentario = data.comentario || '';
+
+    preencherComentario(caixa, comentario);
 
     btn.disabled = false;
     btn.textContent = '💬 Gerar comentário IA';
@@ -46,66 +49,71 @@ function criarBotaoIA(caixa) {
 
 function preencherComentario(caixa, texto) {
   caixa.innerHTML = '';
-  const frag = document.createDocumentFragment();
-  texto.trim().split('\n').forEach((ln, i) => {
-    if (i > 0) frag.appendChild(document.createElement('br'));
-    frag.appendChild(document.createTextNode(ln.trim()));
-  });
-  caixa.appendChild(frag);
+  const fragment = document.createDocumentFragment();
+  texto
+    .trim()
+    .split('\n')
+    .forEach((linha, i) => {
+      if (i > 0) fragment.appendChild(document.createElement('br'));
+      fragment.appendChild(document.createTextNode(linha.trim()));
+    });
+  caixa.appendChild(fragment);
   caixa.dispatchEvent(new InputEvent('input', { bubbles: true }));
 }
 
 function encontrarTextoRelacionado(caixa) {
-  // 1) resposta ou subcomentário
-  let elm = caixa;
-  while (elm && !elm.classList.contains('comments-comment-item')) {
-    elm = elm.parentElement;
+  // 1) Se for resposta/subcomentário:
+  let comentarioEl = caixa;
+  while (comentarioEl && !comentarioEl.classList.contains('comments-comment-item')) {
+    comentarioEl = comentarioEl.parentElement;
   }
-  if (elm) {
-    const spans = elm.querySelectorAll('span[dir="ltr"], div[dir="ltr"]');
-    let txt = '';
-    spans.forEach(s => {
-      if (s.innerText.length > txt.length) txt = s.innerText;
+  if (comentarioEl) {
+    const spans = comentarioEl.querySelectorAll('span[dir="ltr"], div[dir="ltr"]');
+    let texto = '';
+    spans.forEach((s) => {
+      if (s.innerText.length > texto.length) texto = s.innerText;
     });
-    const isSub = !!elm.closest('.comments-comment-item__nested');
-    const tipo = isSub ? 'subcomentario' : 'resposta';
-    const nome = elm.querySelector('.comments-comment-meta__description-title')?.innerText.trim() || '';
-    return { texto: txt.trim(), tipo, nome };
+    const isNested = !!comentarioEl.closest('.comments-comment-item__nested');
+    return { texto: texto.trim(), tipo: isNested ? 'subcomentario' : 'resposta' };
   }
 
-  // 2) publicação em feed ou perfil
-  let post = caixa.closest('[data-id]');
+  // 2) Publicação no feed ou profile:
+  const post = caixa.closest('[data-id]');
   if (post) {
-    const txt = post.innerText.trim().slice(0, 1000);
-    const nome = post.querySelector('.feed-shared-actor__name, .update-components-actor__name')?.innerText.trim() || '';
-    return { texto: txt, tipo: 'publicacao', nome };
+    // tenta texto do feed:
+    let textoPost = post.innerText || '';
+    return { texto: textoPost.trim().slice(0, 1000), tipo: 'publicacao' };
   }
 
-  // 3) newsletter / artigo imersivo
-  post = caixa.closest('article[itemtype="http://schema.org/NewsArticle"]');
-  if (post) {
-    // pega nome do autor (header da newsletter)
-    const nome = post.querySelector('[data-scaffold-immersive-reader-author]')?.innerText.trim()
-              || post.querySelector('.reader-author-info__name')?.innerText.trim()
-              || '';
-    // seleciona o container inteiro do texto
-    const container =
-      post.querySelector('[data-scaffold-immersive-reader-content]') ||
-      post.querySelector('.reader-content-blocks-container');
-    const texto = container?.innerText.trim() || '';
-    return { texto, tipo: 'newsletter', nome };
+  // 3) Newsletter / artigo:
+  const article = document.querySelector('main article[itemtype="http://schema.org/NewsArticle"]');
+  if (article) {
+    // pega h1, h2, h3 e p dentro do conteúdo:
+    const blocks = article.querySelectorAll(
+      '.reader-article-content--content-blocks h1, ' +
+      '.reader-article-content--content-blocks h2, ' +
+      '.reader-article-content--content-blocks h3, ' +
+      '.reader-article-content--content-blocks p'
+    );
+    let texto = '';
+    blocks.forEach((blk) => {
+      texto += blk.innerText.trim() + '\n';
+    });
+    return { texto: texto.trim(), tipo: 'publicacao' };
   }
 
-  // fallback
-  return { texto: caixa.innerText.trim(), tipo: 'publicacao', nome: '' };
+  // fallback vazio
+  return { texto: '', tipo: 'publicacao' };
 }
 
 function monitorarFoco() {
-  document.body.addEventListener('focusin', e => {
+  document.body.addEventListener('focusin', (e) => {
     if (e.target.getAttribute('contenteditable') === 'true') {
       criarBotaoIA(e.target);
     }
   });
 }
 
-window.addEventListener('load', () => setTimeout(monitorarFoco, 2000));
+window.addEventListener('load', () => {
+  setTimeout(monitorarFoco, 2000);
+});

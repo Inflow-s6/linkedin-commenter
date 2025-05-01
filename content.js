@@ -27,14 +27,14 @@ function criarBotaoIA(caixa) {
       'https://n8n-n8n.dodhyu.easypanel.host/webhook/comentario-linkedin',
       {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           texto: referencia.texto,
-          tipoDetectado: referencia.tipo
-        }),
-        headers: { 'Content-Type': 'application/json' }
+          tipoDetectado: referencia.tipo,
+          nome: referencia.nome
+        })
       }
     );
-
     const data = await resposta.json();
     const comentario = data.comentario || '';
 
@@ -49,46 +49,49 @@ function criarBotaoIA(caixa) {
 
 function preencherComentario(caixa, texto) {
   caixa.innerHTML = '';
-  const fragment = document.createDocumentFragment();
+  const frag = document.createDocumentFragment();
   texto
     .trim()
     .split('\n')
-    .forEach((linha, i) => {
-      if (i > 0) fragment.appendChild(document.createElement('br'));
-      fragment.appendChild(document.createTextNode(linha.trim()));
+    .forEach((line, i) => {
+      if (i > 0) frag.appendChild(document.createElement('br'));
+      frag.appendChild(document.createTextNode(line.trim()));
     });
-  caixa.appendChild(fragment);
+  caixa.appendChild(frag);
   caixa.dispatchEvent(new InputEvent('input', { bubbles: true }));
 }
 
 function encontrarTextoRelacionado(caixa) {
-  // 1) Se for resposta/subcomentário:
-  let comentarioEl = caixa;
-  while (comentarioEl && !comentarioEl.classList.contains('comments-comment-item')) {
-    comentarioEl = comentarioEl.parentElement;
+  // 1) Se for resposta (nível 1) ou subcomentário (nível 2)
+  let el = caixa;
+  while (el && !el.classList.contains('comments-comment-item')) {
+    el = el.parentElement;
   }
-  if (comentarioEl) {
-    const spans = comentarioEl.querySelectorAll('span[dir="ltr"], div[dir="ltr"]');
+  if (el) {
+    const spans = el.querySelectorAll('span[dir="ltr"], div[dir="ltr"]');
     let texto = '';
-    spans.forEach((s) => {
+    spans.forEach(s => {
       if (s.innerText.length > texto.length) texto = s.innerText;
     });
-    const isNested = !!comentarioEl.closest('.comments-comment-item__nested');
-    return { texto: texto.trim(), tipo: isNested ? 'subcomentario' : 'resposta' };
+    const isNested = !!el.closest('.comments-comment-item__nested');
+    return { texto: texto.trim(), tipo: isNested ? 'subcomentario' : 'resposta', nome: '' };
   }
 
-  // 2) Publicação no feed ou profile:
+  // 2) Se for publicação no feed ou perfil
   const post = caixa.closest('[data-id]');
   if (post) {
-    // tenta texto do feed:
-    let textoPost = post.innerText || '';
-    return { texto: textoPost.trim().slice(0, 1000), tipo: 'publicacao' };
+    const textoPost = post.innerText || '';
+    return { texto: textoPost.trim().slice(0,1000), tipo: 'publicacao', nome: '' };
   }
 
-  // 3) Newsletter / artigo:
+  // 3) Se for newsletter / artigo
   const article = document.querySelector('main article[itemtype="http://schema.org/NewsArticle"]');
   if (article) {
-    // pega h1, h2, h3 e p dentro do conteúdo:
+    // extrai nome do autor via <h2 class="text-heading-medium">
+    const authorEl = article.querySelector('h2.text-heading-medium');
+    const nomeAutor = authorEl?.innerText.trim() || '';
+
+    // extrai blocos de texto: h1-h3 e p
     const blocks = article.querySelectorAll(
       '.reader-article-content--content-blocks h1, ' +
       '.reader-article-content--content-blocks h2, ' +
@@ -96,18 +99,23 @@ function encontrarTextoRelacionado(caixa) {
       '.reader-article-content--content-blocks p'
     );
     let texto = '';
-    blocks.forEach((blk) => {
-      texto += blk.innerText.trim() + '\n';
+    blocks.forEach(b => {
+      texto += b.innerText.trim() + '\n';
     });
-    return { texto: texto.trim(), tipo: 'publicacao' };
+
+    return {
+      texto: texto.trim(),
+      tipo: 'publicacao',
+      nome: nomeAutor
+    };
   }
 
-  // fallback vazio
-  return { texto: '', tipo: 'publicacao' };
+  // 4) fallback
+  return { texto: '', tipo: 'publicacao', nome: '' };
 }
 
 function monitorarFoco() {
-  document.body.addEventListener('focusin', (e) => {
+  document.body.addEventListener('focusin', e => {
     if (e.target.getAttribute('contenteditable') === 'true') {
       criarBotaoIA(e.target);
     }

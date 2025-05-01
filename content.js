@@ -6,36 +6,34 @@ function criarBotaoIA(caixa) {
   const btn = document.createElement('button');
   btn.textContent = '💬 Gerar comentário IA';
   btn.className = 'btn-gerar-ia';
-  btn.style.marginTop = '6px';
-  btn.style.padding = '6px 10px';
-  btn.style.cursor = 'pointer';
-  btn.style.background = '#0073b1';
-  btn.style.color = '#fff';
-  btn.style.border = 'none';
-  btn.style.borderRadius = '4px';
-  btn.style.fontSize = '14px';
-  btn.style.display = 'block';
+  Object.assign(btn.style, {
+    marginTop: '6px',
+    padding: '6px 10px',
+    cursor: 'pointer',
+    background: '#0073b1',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    fontSize: '14px',
+    display: 'block',
+  });
 
   btn.onclick = async (event) => {
     event.preventDefault();
     btn.disabled = true;
     btn.textContent = '⏳ Gerando...';
 
-    const referencia = encontrarTextoRelacionado(caixa);
+    const { texto, tipo, nome } = encontrarTextoRelacionado(caixa);
 
-    const resposta = await fetch(
+    const resp = await fetch(
       'https://n8n-n8n.dodhyu.easypanel.host/webhook/comentario-linkedin',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          texto: referencia.texto,
-          tipoDetectado: referencia.tipo,
-          nome: referencia.nome
-        })
+        body: JSON.stringify({ texto, tipoDetectado: tipo, nome })
       }
     );
-    const data = await resposta.json();
+    const data = await resp.json();
     const comentario = data.comentario || '';
 
     preencherComentario(caixa, comentario);
@@ -50,19 +48,16 @@ function criarBotaoIA(caixa) {
 function preencherComentario(caixa, texto) {
   caixa.innerHTML = '';
   const frag = document.createDocumentFragment();
-  texto
-    .trim()
-    .split('\n')
-    .forEach((line, i) => {
-      if (i > 0) frag.appendChild(document.createElement('br'));
-      frag.appendChild(document.createTextNode(line.trim()));
-    });
+  texto.trim().split('\n').forEach((line, i) => {
+    if (i) frag.appendChild(document.createElement('br'));
+    frag.appendChild(document.createTextNode(line.trim()));
+  });
   caixa.appendChild(frag);
   caixa.dispatchEvent(new InputEvent('input', { bubbles: true }));
 }
 
 function encontrarTextoRelacionado(caixa) {
-  // 1) Se for resposta (nível 1) ou subcomentário (nível 2)
+  // 1) Resposta ou subcomentário
   let el = caixa;
   while (el && !el.classList.contains('comments-comment-item')) {
     el = el.parentElement;
@@ -77,32 +72,38 @@ function encontrarTextoRelacionado(caixa) {
     return { texto: texto.trim(), tipo: isNested ? 'subcomentario' : 'resposta', nome: '' };
   }
 
-  // 2) Se for publicação no feed ou perfil
+  // 2) Publicação no feed ou perfil
   const post = caixa.closest('[data-id]');
   if (post) {
     const textoPost = post.innerText || '';
     return { texto: textoPost.trim().slice(0,1000), tipo: 'publicacao', nome: '' };
   }
 
-  // 3) Se for newsletter / artigo
-  const article = document.querySelector('main article[itemtype="http://schema.org/NewsArticle"]');
+  // 3) Newsletter / Article (schema.org/NewsArticle)
+  const article = document.querySelector('article[itemtype="http://schema.org/NewsArticle"]');
   if (article) {
-    // extrai nome do autor via <h2 class="text-heading-medium">
-    const authorEl = article.querySelector('h2.text-heading-medium');
-    const nomeAutor = authorEl?.innerText.trim() || '';
-
-    // extrai blocos de texto: h1-h3 e p
-    const blocks = article.querySelectorAll(
-      '.reader-article-content--content-blocks h1, ' +
-      '.reader-article-content--content-blocks h2, ' +
-      '.reader-article-content--content-blocks h3, ' +
+    // Extrai nome do autor: busca primeiro um <h2>, senão texto no header abaixo do título
+    let nomeAutor = '';
+    const h2 = article.querySelector('h2.text-heading-medium, h2');
+    if (h2 && h2.innerText.trim().length > 0) {
+      nomeAutor = h2.innerText.trim();
+    } else {
+      // fallback genérico: pega primeiro link de perfil dentro do artigo
+      const link = article.querySelector('a[href*="/in/"]');
+      if (link) nomeAutor = link.innerText.trim();
+    }
+    // Extrai blocos de conteúdo: heading / parágrafos
+    const sel = [
+      '.reader-article-content--content-blocks h1',
+      '.reader-article-content--content-blocks h2',
+      '.reader-article-content--content-blocks h3',
       '.reader-article-content--content-blocks p'
-    );
+    ].join(',');
+    const blocks = article.querySelectorAll(sel);
     let texto = '';
     blocks.forEach(b => {
       texto += b.innerText.trim() + '\n';
     });
-
     return {
       texto: texto.trim(),
       tipo: 'publicacao',
@@ -110,7 +111,7 @@ function encontrarTextoRelacionado(caixa) {
     };
   }
 
-  // 4) fallback
+  // 4) fallback vazio
   return { texto: '', tipo: 'publicacao', nome: '' };
 }
 
